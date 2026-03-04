@@ -1,0 +1,1 @@
+The file ter-u14n.psf is not created by me, and is by Dimitar Toshkov Zhekov, licensed under the SIL Open Font License, Version 1.1. A copy of this license, and the copyright statement stating who grants the license, can be read in OFL.TXT. The website for "Terminus Font" is https://terminus-font.sourceforge.net/.

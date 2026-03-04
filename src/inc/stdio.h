@@ -1,0 +1,10 @@
+#pragma once
+
+#define COLOUR_BACKGROUND 0x040405
+#define COLOUR_KERNEL_INFO 0x48A5C2
+#define COLOUR_PRINT 0xFFE8F2
+#define COLOUR_SPECIAL_INFO 0x97C8EB
+#define COLOUR_DRIVER_INFO 0x64E9EE
+#define COLOUR_PRINT_ERROR 0xEB6734
+
+void printf(const char* format, ...);
