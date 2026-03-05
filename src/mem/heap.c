@@ -61,7 +61,7 @@ void* malloc(size_t size) {
 
     // Allocate enough pages to have enough space for a block of given size
 
-    uint64_t bytes_needed = size - hdr->size;
+    uint64_t bytes_needed = size;
     uint64_t pages_needed = (bytes_needed / 0x1000) + 1;
 
     heap_extend(hdr, pages_needed);
@@ -152,6 +152,11 @@ void* realloc(void* ptr, size_t size) {
 void heap_split_segment(heap_segment_hdr_t* curr, uint64_t size) {
     heap_segment_hdr_t* new_hdr = (heap_segment_hdr_t*)(((uint8_t*) curr) + sizeof(heap_segment_hdr_t) + size);
 
+    // If there is not enough space to create the next header, leave it
+    if(curr->size <= size + sizeof(heap_segment_hdr_t)) {
+        return;
+    }
+    
     new_hdr->prev = (void*) curr;
     new_hdr->free = true;
 
@@ -168,8 +173,8 @@ void heap_split_segment(heap_segment_hdr_t* curr, uint64_t size) {
 
 /* Merges the current segment with the one in front */
 void heap_merge_forward(heap_segment_hdr_t* curr) {
-    curr->next = ((heap_segment_hdr_t*)(curr->next))->next;
     curr->size += sizeof(heap_segment_hdr_t) + ((heap_segment_hdr_t*) curr->next)->size;
+    curr->next = ((heap_segment_hdr_t*)(curr->next))->next;
 
     memset((void*) curr->next, 0, sizeof(heap_segment_hdr_t));
 }

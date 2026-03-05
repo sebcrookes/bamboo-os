@@ -20,7 +20,7 @@ void kernel_init(boot_data_t* bootdata) {
 
     memory_init(bootdata);
 
-    heap_init((void*)0xFFFFFFF000000000);
+    heap_init((void*) 0xFFFFFFF000000000);
 
     test_vmm();
     
