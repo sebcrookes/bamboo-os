@@ -7,6 +7,8 @@
 #include "../inc/vector.h"
 
 void pcie_probe() {
+    if(!acpi_has_parsed("MCFG")) return;
+
     mcfg_hdr_t* header = acpi_get_mcfg();
     if(header == NULL) return;
 

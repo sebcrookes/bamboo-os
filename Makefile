@@ -73,7 +73,7 @@ limine:
 	@echo 
 
 run:
-	sudo qemu-system-x86_64 -drive format=raw,file=$(BIN)/$(IMAGE) -machine q35
+	sudo qemu-system-x86_64 -drive format=raw,file=$(BIN)/$(IMAGE) -machine q35 --smp 4
 
 clean:
 	rm -rf $(OBJ)

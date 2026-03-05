@@ -17,7 +17,7 @@ typedef struct __attribute__((packed)) {
     uint32_t reserved;
 } mcfg_segment_group_t;
 
-void acpi_parse_mcfg();
+bool acpi_parse_mcfg();
 
 mcfg_hdr_t* acpi_get_mcfg();
 

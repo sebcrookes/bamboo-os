@@ -17,9 +17,18 @@ sdt_hdr_t* xsdt;
 
 uint64_t acpi_higher_half_offset = 0;
 
+vector_t* acpi_parsed_tables; // char* vector
+
+acpi_table_handler_t handlers[] = {
+    {"APIC", acpi_parse_madt},
+    {"MCFG", acpi_parse_mcfg}
+};
+
 void acpi_init(boot_data_t* bootdata) {
     acpi_higher_half_offset = bootdata->higher_half.offset;
     acpi_parse_rsdp((void*) bootdata->rsdp.address);
+
+    acpi_parsed_tables = vector_init();
 
     if(acpi_is_xsdt) {
         acpi_parse_xsdt();
@@ -96,7 +105,7 @@ void acpi_parse_rsdp(void* rsdp_address) {
 void acpi_parse_rsdt() {
     sdt_hdr_t* rsdt_hdr = (sdt_hdr_t*)(void*)(rsdp_v1->rsdt_address + acpi_higher_half_offset);
 
-    bool signature_valid = acpi_is_signature_equal(rsdt_hdr, "RSDT");
+    bool signature_valid = acpi_header_signature_equals(rsdt_hdr, "RSDT");
     faults_assert(signature_valid, "Invalid RSDT header signature");
 
     bool valid = acpi_is_valid_sdt_checksum(rsdt_hdr);
@@ -111,7 +120,7 @@ void acpi_parse_rsdt_tables() {
     // After the RSDT header, there is an array of pointers to other SDTs
     uint32_t* sdts = (uint32_t*)(rsdt + 1);
 
-    for(int i = 0; i < entries; i++) {
+    for(uint64_t i = 0; i < entries; i++) {
         printf(" - ");
         sdt_hdr_t* header = (sdt_hdr_t*)(void*)(((uint64_t) sdts[i]) + acpi_higher_half_offset);
         for(int j = 0; j < 4; j++) {
@@ -120,17 +129,25 @@ void acpi_parse_rsdt_tables() {
 
         /* Check if table should be parsed */
 
-        bool has_parsed = true;
+        bool has_parsed = false;
 
-        if(acpi_is_signature_equal(header, "APIC")) {
-            // printf(": ");
-            // acpi_parse_madt();
-            printf("\n");
-        } else if(acpi_is_signature_equal(header, "MCFG")) {
-            printf(": ");
-            acpi_parse_mcfg();
-        } else {
-            has_parsed = false;
+        // Finding the corresponding handler (if one exists)
+        for(uint64_t i = 0; i < sizeof(handlers); i++) {
+            acpi_table_handler_t* handler = &handlers[i];
+
+            if(acpi_header_signature_equals(header, handler->signature)) {
+                printf(": ");
+                bool success = handler->handler();
+
+                if(success) { // If the parsing was successful, add the signature to the list of parsed tables
+                    vector_add(acpi_parsed_tables, (void*) &handler->signature[0]);
+                }
+
+                has_parsed = true;
+            }
+        }
+
+        if(!has_parsed) {
             printf("\n");
         }
     }
@@ -139,7 +156,7 @@ void acpi_parse_rsdt_tables() {
 void acpi_parse_xsdt() {
     sdt_hdr_t* xsdt_hdr = (sdt_hdr_t*)(void*)(rsdp_v2->xsdt_address + acpi_higher_half_offset);
 
-    bool signature_valid = acpi_is_signature_equal(xsdt_hdr, "XSDT");
+    bool signature_valid = acpi_header_signature_equals(xsdt_hdr, "XSDT");
     faults_assert(signature_valid, "Invalid XSDT header signature");
 
     bool valid = acpi_is_valid_sdt_checksum(xsdt_hdr);
@@ -154,7 +171,7 @@ void acpi_parse_xsdt_tables() {
     // After the XSDT header, there is an array of pointers to other SDTs
     uint64_t* sdts = (uint64_t*)(xsdt + 1);
 
-    for(int i = 0; i < entries; i++) {
+    for(uint64_t i = 0; i < entries; i++) {
         printf(" - ");
         sdt_hdr_t* header = (sdt_hdr_t*)(void*)(sdts[i] + acpi_higher_half_offset);
         for(int j = 0; j < 4; j++) {
@@ -163,19 +180,38 @@ void acpi_parse_xsdt_tables() {
 
         /* Check if table should be parsed */
 
-        bool has_parsed = true;
+        bool has_parsed = false;
 
-        if(acpi_is_signature_equal(header, "APIC")) {
-            printf("\n");
-            // parse_madt();
-        } else if(acpi_is_signature_equal(header, "MCFG")) {
-            printf(": ");
-            acpi_parse_mcfg();
-        } else {
-            has_parsed = false;
+        // Finding the corresponding handler (if one exists)
+        for(uint64_t i = 0; i < sizeof(handlers); i++) {
+            acpi_table_handler_t handler = handlers[i];
+
+            if(acpi_header_signature_equals(header, handler.signature)) {
+                printf(": ");
+                bool success = handler.handler();
+
+                if(success) { // If the parsing was successful, add the signature to the list of parsed tables
+                    vector_add(acpi_parsed_tables, (void*) handler.signature);
+                }
+
+                has_parsed = true;
+            }
+        }
+
+        if(!has_parsed) {
             printf("\n");
         }
     }
+}
+
+bool acpi_has_parsed(const char* signature) {
+    for(uint64_t i = 0; i < vector_size(acpi_parsed_tables); i++) {
+        const char* sig2 = (const char*) vector_get(acpi_parsed_tables, i);
+
+        if(acpi_signatures_equal(signature, sig2)) return true;
+    }
+
+    return false;
 }
 
 sdt_hdr_t* acpi_get_table(const char* signature) {
@@ -188,7 +224,7 @@ sdt_hdr_t* acpi_get_table(const char* signature) {
         for(int i = 0; i < entries; i++) {
             sdt_hdr_t* hdr = (sdt_hdr_t*)(((uint64_t) sdts[i]) + acpi_higher_half_offset);
 
-            if(acpi_is_signature_equal(hdr, signature)) return hdr;
+            if(acpi_header_signature_equals(hdr, signature)) return hdr;
         }
     } else {
         uint64_t entries = (rsdt->length - sizeof(sdt_hdr_t)) / 4;
@@ -199,7 +235,7 @@ sdt_hdr_t* acpi_get_table(const char* signature) {
         for(int i = 0; i < entries; i++) {
             sdt_hdr_t* hdr = (sdt_hdr_t*)(((uint64_t)sdts[i]) + acpi_higher_half_offset);
 
-            if(acpi_is_signature_equal(hdr, signature)) return hdr;
+            if(acpi_header_signature_equals(hdr, signature)) return hdr;
         }
     }
 
@@ -217,17 +253,21 @@ bool acpi_table_exists(const char* signature) {
     for(int i = 0; i < entries; i++) {
         sdt_hdr_t* hdr = (sdt_hdr_t*)(sdts[i]);
 
-        if(acpi_is_signature_equal(hdr, signature)) return true;
+        if(acpi_header_signature_equals(hdr, signature)) return true;
     }
 
     return false;
 }
 
-bool acpi_is_signature_equal(sdt_hdr_t* hdr, const char* signature) {
-    for(int i = 0; i < 4; i++) {
-        if(hdr->signature[i] != signature[i]) return false;
-    }
+bool acpi_header_signature_equals(sdt_hdr_t* hdr, const char* signature) {
+    return acpi_signatures_equal(hdr->signature, signature);
+}
 
+bool acpi_signatures_equal(const char* s1, const char* s2) {
+    for(int i = 0; i < 4; i++) {
+        if(s1[i] != s2[i]) return false;
+    }
+    
     return true;
 }
 

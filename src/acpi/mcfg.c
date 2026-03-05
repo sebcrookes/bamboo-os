@@ -7,8 +7,9 @@ mcfg_hdr_t* mcfg = NULL;
 
 vector_t* mcfg_segment_groups = NULL;
 
-void acpi_parse_mcfg() {
+bool acpi_parse_mcfg() {
     mcfg = (mcfg_hdr_t*) acpi_get_table("MCFG");
+    if(mcfg == NULL) return false;
 
     faults_assert(acpi_is_valid_sdt_checksum(&mcfg->header), "Invalid MCFG checksum");
 
