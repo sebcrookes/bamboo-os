@@ -1,3 +1,8 @@
+/**
+ * madt.h - header file containing structs and function prototypes
+ * used in the parsing of the MADT table.
+ */
+
 #pragma once
 
 #include "acpi.h"
@@ -94,6 +99,6 @@ typedef struct __attribute__((packed)) {
  * Parses the MADT table, making copies of info about Local APICs,
  * I/O APICs, and any other data about mappings and interrupts.
  * 
- * @return true if all parsing happened as expected
+ * @return true if all parsing takes place as expected
  */
 bool acpi_parse_madt();

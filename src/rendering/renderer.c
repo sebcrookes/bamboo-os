@@ -24,7 +24,7 @@ void renderer_set_pixel(uint64_t x, uint64_t y, uint32_t colour) {
 }
 
 void renderer_draw_char_at(char c, uint64_t x, uint64_t y, uint32_t colour) {
-    if((uint32_t) c >= r_font->info.num_glyphs || c >= 128) return;
+    if((uint32_t) c >= r_font->info.num_glyphs || (uint8_t) c >= 128) return;
 
     uint8_t* glyph = r_font->glyphs + (r_font->mappings[(uint8_t) c] * r_font->info.bytes_per_glyph);
     uint32_t pitch = r_font->info.bytes_per_glyph / r_font->info.height;
@@ -57,7 +57,7 @@ void renderer_draw_char(char c, uint32_t colour) {
         r_x = r_fb->width / 2 + r_font->info.width;
     }
 
-    if(r_y >= r_fb->height) {
+    if(r_y + r_font->info.height >= r_fb->height) {
         if(!r_on_second_half) {
             r_on_second_half = true;
             r_x = r_fb->width / 2  + r_font->info.width;

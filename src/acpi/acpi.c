@@ -1,3 +1,8 @@
+/**
+ * acpi.c - C file containing the implementations of functions in acpi.h,
+ * which parse the ACPI tables.
+ */
+
 #include "acpi.h"
 
 #include "../inc/faults.h"
@@ -10,7 +15,7 @@
 
 bool acpi_is_xsdt = false;
 
-rsdp_t* rsdp_v1;
+rsdp_v1_t* rsdp_v1;
 rsdp_v2_t* rsdp_v2;
 sdt_hdr_t* rsdt;
 sdt_hdr_t* xsdt;
@@ -19,6 +24,7 @@ uint64_t acpi_higher_half_offset = 0;
 
 vector_t* acpi_parsed_tables; // char* vector
 
+// An array of all of the tables' signatures, with their corresponding parser
 acpi_table_handler_t handlers[] = {
     {"APIC", acpi_parse_madt},
     {"MCFG", acpi_parse_mcfg}
@@ -50,7 +56,7 @@ void acpi_init(boot_data_t* bootdata) {
 void acpi_parse_rsdp(void* rsdp_address) {
     /* === Loading the RSDP V1 structure === */
 
-    rsdp_t* table_v1 = (rsdp_t*)(void*)((uint64_t) rsdp_address + acpi_higher_half_offset);
+    rsdp_v1_t* table_v1 = (rsdp_v1_t*)(void*)((uint64_t) rsdp_address + acpi_higher_half_offset);
 
     /* === Validating RSDP signature === */
     // Checking that signature == "RSD PTR "
@@ -72,7 +78,7 @@ void acpi_parse_rsdp(void* rsdp_address) {
         cast to a uint8_t. If the value == 0, the structure is valid */
 
     uint64_t sum = 0;
-    for(uint64_t i = 0; i < sizeof(rsdp_t); i++) {
+    for(uint64_t i = 0; i < sizeof(rsdp_v1_t); i++) {
         sum += ((uint8_t*) table_v1)[i];
     }
 
@@ -115,6 +121,8 @@ void acpi_parse_rsdt() {
 }
 
 void acpi_parse_rsdt_tables() {
+    if(acpi_is_xsdt) return;
+
     uint64_t entries = (rsdt->length - sizeof(sdt_hdr_t)) / 4;
 
     // After the RSDT header, there is an array of pointers to other SDTs
@@ -166,6 +174,8 @@ void acpi_parse_xsdt() {
 }
 
 void acpi_parse_xsdt_tables() {
+    if(!acpi_is_xsdt) return;
+
     uint64_t entries = (xsdt->length - sizeof(sdt_hdr_t)) / 8;
 
     // After the XSDT header, there is an array of pointers to other SDTs
@@ -221,7 +231,7 @@ sdt_hdr_t* acpi_get_table(const char* signature) {
         // After the XSDT header, there is an array of pointers to other SDTs
         uint64_t* sdts = (uint64_t*)(xsdt + 1);
 
-        for(int i = 0; i < entries; i++) {
+        for(uint64_t i = 0; i < entries; i++) {
             sdt_hdr_t* hdr = (sdt_hdr_t*)(((uint64_t) sdts[i]) + acpi_higher_half_offset);
 
             if(acpi_header_signature_equals(hdr, signature)) return hdr;
@@ -232,7 +242,7 @@ sdt_hdr_t* acpi_get_table(const char* signature) {
         // After the XSDT header, there is an array of pointers to other SDTs
         uint32_t* sdts = (uint32_t*)(rsdt + 1);
 
-        for(int i = 0; i < entries; i++) {
+        for(uint64_t i = 0; i < entries; i++) {
             sdt_hdr_t* hdr = (sdt_hdr_t*)(((uint64_t)sdts[i]) + acpi_higher_half_offset);
 
             if(acpi_header_signature_equals(hdr, signature)) return hdr;
@@ -250,7 +260,7 @@ bool acpi_table_exists(const char* signature) {
     // After the XSDT header, there is an array of pointers to other SDTs
     uint64_t* sdts = (uint64_t*)(xsdt + 1);
 
-    for(int i = 0; i < entries; i++) {
+    for(uint64_t i = 0; i < entries; i++) {
         sdt_hdr_t* hdr = (sdt_hdr_t*)(sdts[i]);
 
         if(acpi_header_signature_equals(hdr, signature)) return true;

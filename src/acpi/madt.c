@@ -1,24 +1,35 @@
+/**
+ * madt.c - C file containing the implementation of the functions in madt.h,
+ * parsing the MADT table.
+ */
+
 #include "madt.h"
 
 #include "../inc/stdio.h"
 #include "../inc/vector.h"
 #include "../inc/string.h"
+#include "../inc/faults.h"
 #include "../mem/heap.h"
 
-sdt_hdr_t* hdr;
+sdt_hdr_t* hdr = NULL;
 uint64_t local_apic_bsp_addr;
 
-vector_t* lapics;
-vector_t* ioapics;
+vector_t* lapics = NULL;    // madt_local_apic_t* vector
+vector_t* ioapics = NULL;   // madt_ioapic_t* vector
 
-vector_t* interrupt_source_overrides;
-vector_t* interrupt_ioapic_nmis;
-vector_t* interrupt_lapic_nmis;
+vector_t* interrupt_source_overrides = NULL;    // madt_int_src_override_t* vector
+vector_t* interrupt_ioapic_nmis = NULL;         // madt_ioapic_nmi_src_t* vector
+vector_t* interrupt_lapic_nmis = NULL;          // madt_lapic_nmi_t* vector
 
 bool acpi_parse_madt() {
     // Getting the "APIC" (MADT) table
     hdr = acpi_get_table("APIC");
     if(hdr == NULL) return false;
+
+    if(!acpi_is_valid_sdt_checksum(hdr)) {
+        printf("%C[MADT]%C - Invalid MADT checksum\n", COLOUR_KERNEL_INFO, COLOUR_PRINT);
+        return false;
+    }
 
     lapics = vector_init();
     ioapics = vector_init();
