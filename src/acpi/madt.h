@@ -7,14 +7,16 @@
 
 #include "acpi.h"
 
+#include "../inc/vector.h"
+
 /**
  * The struct which comes directly after the header, telling
- * us the address of the BSP's Local APIC.
+ * us the address of the Local APIC.
  */
 typedef struct __attribute__((packed)) {
     uint32_t address;
     uint32_t flags;
-} madt_local_apic_bsp_t;
+} madt_local_apic_addr_t;
 
 /**
  * The struct at the start of each entry. Tells us the type of the
@@ -102,3 +104,24 @@ typedef struct __attribute__((packed)) {
  * @return true if all parsing takes place as expected
  */
 bool acpi_parse_madt();
+
+/**
+ * Gets the address of the local APIC.
+ * 
+ * @return the address of the local APIC, NULL if the table wasn't parsed
+ */
+uint64_t acpi_get_lapic_addr();
+
+/**
+ * Gets the list of local APICs.
+ * 
+ * @return the list of local APICs, or NULL if the table wasn't parsed
+ */
+vector_t* acpi_get_lapics();
+
+/**
+ * Gets the list of I/O APICs.
+ * 
+ * @return the list of I/O APICs, or NULL if the table wasn't parsed
+ */
+vector_t* acpi_get_ioapics();

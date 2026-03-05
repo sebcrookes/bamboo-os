@@ -3,14 +3,17 @@
 #include "../mem/pmm.h"
 #include "../mem/vmm.h"
 
+#include "../inc/stdio.h"
+
 #include "isr.h"
 #include "idt.h"
 
-/**
- * Initialises and configures interrupt handling.
- */
+#include "lapic.h"
+
 void int_init() {
     asm("cli");
+
+    //printf("%C[Interrupts]%C - Setting up interrupts...\n", COLOUR_KERNEL_INFO, COLOUR_PRINT);
 
     idt_init();
 
@@ -23,6 +26,10 @@ void int_init() {
     idt_set_handler(0x0E, &isr_page_fault_handler, 0xE);
 
     idt_install();
+
+    lapic_init();
+
+    printf("%C[Interrupts]%C - Interrupts installed\n", COLOUR_KERNEL_INFO, COLOUR_PRINT);
 
     asm("sti");
 }

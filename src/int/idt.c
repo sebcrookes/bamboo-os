@@ -5,9 +5,6 @@
 idt_t* idt;
 void* idtr;
 
-/**
- * Allocates memory for and sets up the IDT and IDTR structures.
- */
 void idt_init() {
     idt = (idt_t*) pmm_alloc();
     idtr = (void*) pmm_alloc();
@@ -20,13 +17,6 @@ void idt_init() {
     *idtr_base = (uint64_t) idt;
 }
 
-/**
- * Sets the ISR for a given interrupt vector.
- * 
- * @param vector the interrupt vector the handler is for
- * @param handler the ISR to be called
- * @param gate_type the type of gate for that interrupt (IDT_INTERRUPT_GATE or IDT_TRAP_GATE)
- */
 void idt_set_handler(uint8_t vector, void* handler, uint8_t gate_type) {
     idt_entry_t* entry = &idt->descriptors[vector];
 
@@ -46,9 +36,6 @@ void idt_set_handler(uint8_t vector, void* handler, uint8_t gate_type) {
     entry->bits.present = 1;
 }
 
-/**
- * Loads the IDTR into the CPUs internal registers.
- */
 void idt_install() {
     _idt_load((void*) idtr);
 }

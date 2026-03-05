@@ -6,13 +6,12 @@
 #include "madt.h"
 
 #include "../inc/stdio.h"
-#include "../inc/vector.h"
 #include "../inc/string.h"
 #include "../inc/faults.h"
 #include "../mem/heap.h"
 
 sdt_hdr_t* hdr = NULL;
-uint64_t local_apic_bsp_addr;
+uint64_t local_apic_addr = 0;
 
 vector_t* lapics = NULL;    // madt_local_apic_t* vector
 vector_t* ioapics = NULL;   // madt_ioapic_t* vector
@@ -39,11 +38,11 @@ bool acpi_parse_madt() {
     interrupt_lapic_nmis = vector_init();
 
     // Getting the address of the BSPs local APIC (this may be overridden via a type 5 entry)
-    madt_local_apic_bsp_t* lapic_bsp = (madt_local_apic_bsp_t*)(hdr + 1);
-    local_apic_bsp_addr = lapic_bsp->address;
+    madt_local_apic_addr_t* lapic_bsp = (madt_local_apic_addr_t*)(hdr + 1);
+    local_apic_addr = lapic_bsp->address;
 
     // Looping over each entry in the table
-    uint64_t i = sizeof(sdt_hdr_t) + sizeof(madt_local_apic_bsp_t);
+    uint64_t i = sizeof(sdt_hdr_t) + sizeof(madt_local_apic_addr_t);
     while(i < hdr->length) {
         madt_entry_info_t* entry_info = (madt_entry_info_t*)(((uint8_t*) hdr) + i);
 
@@ -98,7 +97,7 @@ bool acpi_parse_madt() {
             case 5: { // Local APIC Address Override
                 madt_lapic_addr_override_t* override = (madt_lapic_addr_override_t*)(entry_info + 1);
 
-                local_apic_bsp_addr = override->address;
+                local_apic_addr = override->address;
             } break;
 
             case 9: { // Processor Local x2APIC
@@ -135,4 +134,16 @@ bool acpi_parse_madt() {
     printf("\n");
 
     return true;
+}
+
+uint64_t acpi_get_lapic_addr() {
+    return local_apic_addr;
+}
+
+vector_t* acpi_get_lapics() {
+    return lapics;
+}
+
+vector_t* acpi_get_ioapics() {
+    return ioapics;
 }
